@@ -1,9 +1,7 @@
 """
 novelty_validator.py
 
-Demonstration code inspired by the patent:
-"Validation of Novelty with Artificial Intelligence and Heuristics"
-Publication No: 20250217911
+AI and Heuristics to validate novelty 
 
 This module shows how an AI/heuristic system can:
 - evaluate the novelty of an idea or invention
@@ -12,7 +10,6 @@ This module shows how an AI/heuristic system can:
 - provide a novelty confidence score
 - produce a structured explanation
 
-Fully original demonstration code (non-patented code).
 """
 
 import math
