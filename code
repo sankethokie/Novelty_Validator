@@ -1,0 +1,191 @@
+"""
+novelty_validator.py
+
+Demonstration code inspired by the patent:
+"Validation of Novelty with Artificial Intelligence and Heuristics"
+Publication No: 20250217911
+
+This module shows how an AI/heuristic system can:
+- evaluate the novelty of an idea or invention
+- compare it against existing prior art descriptions
+- compute similarity scores using heuristics + embeddings
+- provide a novelty confidence score
+- produce a structured explanation
+
+Fully original demonstration code (non-patented code).
+"""
+
+import math
+import re
+from typing import List, Dict, Optional
+from dataclasses import dataclass, field
+
+
+# -----------------------------
+# Utility: simple text cleaner
+# -----------------------------
+def clean_text(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+# -----------------------------
+# Cosine-similarity using simple word vectors
+# (Bag-of-words style)
+# -----------------------------
+def cosine_similarity(vec1: Dict[str, int], vec2: Dict[str, int]) -> float:
+    dot = 0
+    for k in vec1:
+        if k in vec2:
+            dot += vec1[k] * vec2[k]
+
+    mag1 = math.sqrt(sum(v * v for v in vec1.values()))
+    mag2 = math.sqrt(sum(v * v for v in vec2.values()))
+
+    if mag1 * mag2 == 0:
+        return 0.0
+
+    return dot / (mag1 * mag2)
+
+
+def text_to_vector(text: str) -> Dict[str, int]:
+    words = text.split()
+    vec = {}
+    for w in words:
+        vec[w] = vec.get(w, 0) + 1
+    return vec
+
+
+# -----------------------------
+# Heuristic rules
+# -----------------------------
+def heuristic_novelty_boost(text: str) -> float:
+    """
+    Apply rule-based novelty boosts:
+    - presence of rare/advanced keywords
+    - conceptual uniqueness
+    """
+    keywords = [
+        "rare event",
+        "multi-agent",
+        "high-dimensional",
+        "temporal graph",
+        "novel",
+        "unique",
+        "semantic",
+        "transformer",
+        "embedding",
+        "agent",
+        "autonomous",
+        "dynamic routing",
+        "reinforcement learning"
+    ]
+    score = 0
+    for kw in keywords:
+        if kw in text:
+            score += 0.05  # small boost per keyword
+
+    return min(score, 0.25)  # cap boost
+
+
+# -----------------------------
+# Core system
+# -----------------------------
+@dataclass
+class PriorArtEntry:
+    title: str
+    description: str
+
+
+@dataclass
+class NoveltyResult:
+    idea: str
+    novelty_score: float
+    nearest_prior: Optional[str]
+    similarity: float
+    explanation: str
+
+
+class NoveltyValidator:
+    def __init__(self, prior_art: List[PriorArtEntry]):
+        self.prior_art = prior_art
+
+    def validate(self, idea: str) -> NoveltyResult:
+        idea_clean = clean_text(idea)
+        idea_vec = text_to_vector(idea_clean)
+
+        best_sim = 0
+        best_title = None
+
+        # Compare idea against each prior art entry
+        for entry in self.prior_art:
+            entry_clean = clean_text(entry.description)
+            entry_vec = text_to_vector(entry_clean)
+            sim = cosine_similarity(idea_vec, entry_vec)
+
+            if sim > best_sim:
+                best_sim = sim
+                best_title = entry.title
+
+        # Base novelty = inverse similarity
+        base_novelty = 1 - best_sim
+
+        # Apply heuristic novelty boosts
+        heuristic_boost = heuristic_novelty_boost(idea_clean)
+        final_novelty = base_novelty + heuristic_boost
+        final_novelty = max(0.0, min(final_novelty, 1.0))
+
+        explanation = (
+            f"The idea was compared against {len(self.prior_art)} prior art entries. "
+            f"The closest match was '{best_title}' with similarity {best_sim:.3f}. "
+            f"Base novelty = {base_novelty:.3f}. "
+            f"Heuristic boost applied = {heuristic_boost:.3f}. "
+            f"Final novelty = {final_novelty:.3f}."
+        )
+
+        return NoveltyResult(
+            idea=idea,
+            novelty_score=final_novelty,
+            nearest_prior=best_title,
+            similarity=best_sim,
+            explanation=explanation
+        )
+
+
+# -----------------------------
+# Example Usage
+# -----------------------------
+if __name__ == "__main__":
+    # Sample prior art database (replace with actual data or load from a file)
+    prior_art_db = [
+        PriorArtEntry(
+            title="Intent-Based Content Modification",
+            description="System that rewrites user messages for clarity, tone, or sentiment using NLP heuristics."
+        ),
+        PriorArtEntry(
+            title="Graph-based Optimization Framework",
+            description="A system for path optimization and dynamic routing using graph analytics."
+        ),
+        PriorArtEntry(
+            title="Transformer-based Text Summarization",
+            description="Text summarization system using transformer encoder-decoder models."
+        ),
+    ]
+
+    validator = NoveltyValidator(prior_art=prior_art_db)
+
+    idea_text = """
+    An autonomous multi-agent system that evaluates novelty using heuristics,
+    dynamic embeddings, high-dimensional signatures, and rare-event detection signals.
+    """
+
+    result = validator.validate(idea_text)
+
+    print("=== Novelty Validation Result ===")
+    print("Idea:", result.idea.strip())
+    print("Nearest Prior Art:", result.nearest_prior)
+    print("Similarity Score:", f"{result.similarity:.3f}")
+    print("Novelty Score:", f"{result.novelty_score:.3f}")
+    print("Explanation:", result.explanation)
